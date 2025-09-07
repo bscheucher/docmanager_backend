@@ -2,6 +2,7 @@ package com.app.docmanager.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -16,8 +17,8 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(callSuper = true, exclude = "tags")
-@ToString(exclude = "tags")
+@EqualsAndHashCode(callSuper = true, exclude = {"tags", "user"})
+@ToString(exclude = {"tags", "user"})
 public class Document extends BaseEntity {
 
     @NotBlank(message = "Document title cannot be blank")
@@ -47,6 +48,11 @@ public class Document extends BaseEntity {
     @Column(name = "document_date")
     private LocalDate documentDate;
 
+    @NotNull(message = "Document must belong to a user")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
             name = "document_tags",
@@ -57,14 +63,24 @@ public class Document extends BaseEntity {
     private Set<Tag> tags = new HashSet<>();
 
     // Custom constructors
-    public Document(String title) {
+    public Document(String title, User user) {
         this.title = title;
+        this.user = user;
         this.tags = new HashSet<>();
     }
 
-    public Document(String title, String category) {
+    public Document(String title, String category, User user) {
         this.title = title;
         this.category = category;
+        this.user = user;
+        this.tags = new HashSet<>();
+    }
+
+    public Document(String title, String category, String filePath, User user) {
+        this.title = title;
+        this.category = category;
+        this.filePath = filePath;
+        this.user = user;
         this.tags = new HashSet<>();
     }
 
@@ -83,5 +99,30 @@ public class Document extends BaseEntity {
         for (Tag tag : new HashSet<>(tags)) {
             removeTag(tag);
         }
+    }
+
+    // Utility methods for user relationship
+    public void setUser(User user) {
+        // Remove from previous user if exists
+        if (this.user != null) {
+            this.user.getDocuments().remove(this);
+        }
+
+        this.user = user;
+
+        // Add to new user if not null
+        if (user != null && !user.getDocuments().contains(this)) {
+            user.getDocuments().add(this);
+        }
+    }
+
+    // Convenience method to get user's username
+    public String getUserUsername() {
+        return user != null ? user.getUsername() : null;
+    }
+
+    // Convenience method to get user's full name
+    public String getUserFullName() {
+        return user != null ? user.getFullName() : null;
     }
 }
