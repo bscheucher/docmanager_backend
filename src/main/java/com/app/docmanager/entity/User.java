@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "users")
+@Table(name = "dm_users")
 @Getter
 @Setter
 @NoArgsConstructor
