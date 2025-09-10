@@ -2,6 +2,8 @@ package com.app.docmanager.controller;
 
 import com.app.docmanager.dto.UserDTO;
 import com.app.docmanager.entity.User;
+import com.app.docmanager.exception.ResourceNotFoundException;
+import com.app.docmanager.exception.DuplicateResourceException;
 import com.app.docmanager.mapper.UserMapper;
 import com.app.docmanager.service.UserService;
 import jakarta.validation.Valid;
@@ -31,14 +33,14 @@ public class UserController {
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         return userService.getUserById(id)
                 .map(user -> ResponseEntity.ok(userMapper.toDto(user)))
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
     }
 
     @GetMapping("/username/{username}")
     public ResponseEntity<UserDTO> getUserByUsername(@PathVariable String username) {
         return userService.getUserByUsername(username)
                 .map(user -> ResponseEntity.ok(userMapper.toDto(user)))
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
     }
 
     @PostMapping
@@ -49,7 +51,8 @@ public class UserController {
             UserDTO userDTO = userMapper.toDto(savedUser);
             return ResponseEntity.status(HttpStatus.CREATED).body(userDTO);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            // This will be caught by GlobalExceptionHandler if we use proper exceptions
+            throw new DuplicateResourceException(e.getMessage());
         }
     }
 
@@ -57,24 +60,31 @@ public class UserController {
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserDTO.UpdateUserRequest request) {
+
+        // Get the existing user first
+        User existingUser = userService.getUserById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+
+        // Update the existing user with new data
+        User updatedUserData = userMapper.updateEntity(existingUser, request);
+
         try {
-            User updatedUser = userMapper.updateEntity(new User(), request);
-            updatedUser = userService.updateUser(id, updatedUser);
-            UserDTO userDTO = userMapper.toDto(updatedUser);
+            User savedUser = userService.updateUser(id, updatedUserData);
+            UserDTO userDTO = userMapper.toDto(savedUser);
             return ResponseEntity.ok(userDTO);
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            throw new DuplicateResourceException(e.getMessage());
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        try {
-            userService.deleteUser(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        // Check if user exists first
+        userService.getUserById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 
     // Additional endpoints

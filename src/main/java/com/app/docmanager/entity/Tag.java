@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,6 +15,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@SuperBuilder  // Added @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Tag extends BaseEntity {
 
@@ -25,6 +27,7 @@ public class Tag extends BaseEntity {
 
     @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
     @ToString.Exclude
+    @Builder.Default
     private Set<Document> documents = new HashSet<>();
 
     // Constructor for just name

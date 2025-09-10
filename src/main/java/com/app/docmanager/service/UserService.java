@@ -1,6 +1,8 @@
 package com.app.docmanager.service;
 
 import com.app.docmanager.entity.User;
+import com.app.docmanager.exception.DuplicateResourceException;
+import com.app.docmanager.exception.ResourceNotFoundException;
 import com.app.docmanager.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,10 +37,10 @@ public class UserService {
     @Transactional
     public User createUser(User user) {
         if (userRepository.existsByUsername(user.getUsername())) {
-            throw new RuntimeException("Username already exists: " + user.getUsername());
+            throw new DuplicateResourceException("User", "username", user.getUsername());
         }
         if (userRepository.existsByEmail(user.getEmail())) {
-            throw new RuntimeException("Email already exists: " + user.getEmail());
+            throw new DuplicateResourceException("User", "email", user.getEmail());
         }
         return userRepository.save(user);
     }
@@ -50,13 +52,13 @@ public class UserService {
                     // Check username uniqueness (only if changed)
                     if (!existingUser.getUsername().equals(updatedUser.getUsername())
                             && userRepository.existsByUsername(updatedUser.getUsername())) {
-                        throw new RuntimeException("Username already exists: " + updatedUser.getUsername());
+                        throw new DuplicateResourceException("User", "username", updatedUser.getUsername());
                     }
 
                     // Check email uniqueness (only if changed)
                     if (!existingUser.getEmail().equals(updatedUser.getEmail())
                             && userRepository.existsByEmail(updatedUser.getEmail())) {
-                        throw new RuntimeException("Email already exists: " + updatedUser.getEmail());
+                        throw new DuplicateResourceException("User", "email", updatedUser.getEmail());
                     }
 
                     existingUser.setUsername(updatedUser.getUsername());
@@ -66,13 +68,13 @@ public class UserService {
 
                     return userRepository.save(existingUser);
                 })
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
     }
 
     @Transactional
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found with id: " + id);
+            throw new ResourceNotFoundException("User", "id", id);
         }
         userRepository.deleteById(id);
     }
@@ -83,5 +85,21 @@ public class UserService {
 
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    /**
+     * Get user by ID, throwing exception if not found
+     */
+    public User getUserByIdOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+    }
+
+    /**
+     * Get user by username, throwing exception if not found
+     */
+    public User getUserByUsernameOrThrow(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
     }
 }
