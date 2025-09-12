@@ -8,7 +8,9 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "dm_users")
@@ -16,9 +18,9 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder  // Changed from @Builder
+@SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-@ToString(exclude = "documents")
+@ToString(exclude = {"documents", "password"})
 public class User extends BaseEntity {
 
     @NotBlank(message = "Username cannot be blank")
@@ -34,6 +36,10 @@ public class User extends BaseEntity {
     @EqualsAndHashCode.Include
     private String email;
 
+    @NotBlank(message = "Password cannot be blank")
+    @Column(name = "password", nullable = false)
+    private String password;
+
     @Size(max = 100, message = "First name cannot exceed 100 characters")
     @Column(name = "first_name", length = 100)
     private String firstName;
@@ -42,22 +48,43 @@ public class User extends BaseEntity {
     @Column(name = "last_name", length = 100)
     private String lastName;
 
+    @Column(name = "enabled")
+    @Builder.Default
+    private boolean enabled = true;
+
+    @Column(name = "account_non_expired")
+    @Builder.Default
+    private boolean accountNonExpired = true;
+
+    @Column(name = "account_non_locked")
+    @Builder.Default
+    private boolean accountNonLocked = true;
+
+    @Column(name = "credentials_non_expired")
+    @Builder.Default
+    private boolean credentialsNonExpired = true;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
     private List<Document> documents = new ArrayList<>();
 
     // Custom constructors
-    public User(String username, String email) {
+    public User(String username, String email, String password) {
         this.username = username;
         this.email = email;
-        this.documents = new ArrayList<>();
-    }
-
-    public User(String username, String email, String firstName, String lastName) {
-        this.username = username;
-        this.email = email;
-        this.firstName = firstName;
-        this.lastName = lastName;
+        this.password = password;
+        this.enabled = true;
+        this.accountNonExpired = true;
+        this.accountNonLocked = true;
+        this.credentialsNonExpired = true;
+        this.roles = new HashSet<>();
         this.documents = new ArrayList<>();
     }
 
@@ -76,6 +103,19 @@ public class User extends BaseEntity {
         for (Document document : new ArrayList<>(documents)) {
             removeDocument(document);
         }
+    }
+
+    // Utility methods for managing roles
+    public void addRole(Role role) {
+        this.roles.add(role);
+    }
+
+    public void removeRole(Role role) {
+        this.roles.remove(role);
+    }
+
+    public boolean hasRole(Role role) {
+        return this.roles.contains(role);
     }
 
     // Convenience method to get full name
