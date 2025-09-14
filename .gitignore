@@ -203,3 +203,4 @@ README.html
 schema.sql
 
 src/main/resources/application.properties
+src/main/resources/application.yml
