@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -68,7 +67,12 @@ public class DocumentDTO {
         private String extractedText;
         private LocalDate documentDate;
 
-        @NotNull(message = "User ID is required")
+        /**
+         * @deprecated This field is ignored for security reasons.
+         * The user is automatically set to the authenticated user.
+         * This field is only kept for backward compatibility.
+         */
+        @Deprecated
         private Long userId;
 
         private Set<String> tags;
@@ -92,5 +96,8 @@ public class DocumentDTO {
         private LocalDate documentDate;
 
         private Set<String> tags;
+
+        // Note: No userId field here as users cannot transfer document ownership
+        // through updates for security reasons
     }
 }

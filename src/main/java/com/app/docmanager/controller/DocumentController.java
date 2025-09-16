@@ -27,6 +27,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
@@ -73,11 +77,11 @@ public class DocumentController {
             @Valid @RequestBody DocumentDTO.CreateDocumentRequest request,
             @CurrentUser CustomUserDetails currentUser) {
 
-        // Set the current user as the document owner
-        request.setUserId(currentUser.getId());
+        // Map request to document entity (without user)
+        Document document = documentMapper.toEntityWithoutUser(request);
 
-        Document document = documentMapper.toEntity(request);
-        Document savedDocument = documentService.createDocument(document);
+        // Service handles user assignment and tag resolution securely
+        Document savedDocument = documentService.createDocument(document, currentUser.getId(), request.getTags());
         DocumentDTO documentDTO = documentMapper.toDto(savedDocument);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(documentDTO);
@@ -89,23 +93,33 @@ public class DocumentController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("title") String title,
             @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "tags", required = false) String tagsParam,
             @CurrentUser CustomUserDetails currentUser) {
 
         try {
             // Store the file
             String fileName = fileStorageService.storeFile(file);
 
-            // Create document record
+            // Parse tags from request parameter (if provided)
+            Set<String> tags = null;
+            if (tagsParam != null && !tagsParam.trim().isEmpty()) {
+                tags = Arrays.stream(tagsParam.split(","))
+                        .map(String::trim)
+                        .filter(tag -> !tag.isEmpty())
+                        .collect(Collectors.toSet());
+            }
+
+            // Create document record without user
             DocumentDTO.CreateDocumentRequest request = new DocumentDTO.CreateDocumentRequest();
             request.setTitle(title);
             request.setCategory(category);
             request.setFilePath(fileName);
             request.setFileType(file.getContentType());
             request.setFileSize(file.getSize());
-            request.setUserId(currentUser.getId());
+            request.setTags(tags);
 
-            Document document = documentMapper.toEntity(request);
-            Document savedDocument = documentService.createDocument(document);
+            Document document = documentMapper.toEntityWithoutUser(request);
+            Document savedDocument = documentService.createDocument(document, currentUser.getId(), tags);
             DocumentDTO documentDTO = documentMapper.toDto(savedDocument);
 
             log.info("File uploaded successfully: {} by user: {}", fileName, currentUser.getUsername());
@@ -116,7 +130,6 @@ public class DocumentController {
             throw new RuntimeException("Could not upload file: " + e.getMessage());
         }
     }
-
     @GetMapping("/{id}/download")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Resource> downloadDocument(
@@ -165,13 +178,15 @@ public class DocumentController {
                         || currentUser.getRoles().stream().anyMatch(role -> role.name().equals("ROLE_ADMIN")))
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
+        // Map the update request to document entity
         Document updatedDocumentData = documentMapper.updateEntity(existingDocument, request);
-        Document savedDocument = documentService.updateDocument(id, updatedDocumentData);
+
+        // Update the document with tag resolution in service layer
+        Document savedDocument = documentService.updateDocument(id, updatedDocumentData, request.getTags());
         DocumentDTO documentDTO = documentMapper.toDto(savedDocument);
 
         return ResponseEntity.ok(documentDTO);
     }
-
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Void> deleteDocument(

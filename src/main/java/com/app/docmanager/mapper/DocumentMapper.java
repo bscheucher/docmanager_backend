@@ -42,47 +42,29 @@ public class DocumentMapper {
     }
 
     /**
-     * Convert CreateDocumentRequest to Document entity
+     * Convert CreateDocumentRequest to Document entity WITHOUT user
+     * Tags will be resolved in the service layer
      */
-    public Document toEntity(DocumentDTO.CreateDocumentRequest request) {
+    public Document toEntityWithoutUser(DocumentDTO.CreateDocumentRequest request) {
         if (request == null) {
             return null;
         }
 
-        Document.DocumentBuilder builder = Document.builder()
+        return Document.builder()
                 .title(request.getTitle())
                 .category(request.getCategory())
                 .filePath(request.getFilePath())
                 .fileType(request.getFileType())
                 .fileSize(request.getFileSize())
                 .extractedText(request.getExtractedText())
-                .documentDate(request.getDocumentDate());
-
-        // Set user if provided
-        if (request.getUserId() != null) {
-            User user = User.builder()
-                    .id(request.getUserId())
-                    .build();
-            builder.user(user);
-        }
-
-        Document document = builder.build();
-
-        // Handle tags - convert strings to Tag entities
-        if (request.getTags() != null && !request.getTags().isEmpty()) {
-            Set<Tag> tags = request.getTags().stream()
-                    .map(tagName -> Tag.builder()
-                            .name(tagName.trim().toLowerCase())
-                            .build())
-                    .collect(Collectors.toSet());
-            document.setTags(tags);
-        }
-
-        return document;
+                .documentDate(request.getDocumentDate())
+                .build();
+        // Note: Tags will be handled in the service layer
     }
 
     /**
      * Update existing Document entity with data from UpdateDocumentRequest
+     * Tags will be resolved in the service layer
      */
     public Document updateEntity(Document existingDocument, DocumentDTO.UpdateDocumentRequest request) {
         if (request == null || existingDocument == null) {
@@ -97,22 +79,7 @@ public class DocumentMapper {
         existingDocument.setExtractedText(request.getExtractedText());
         existingDocument.setDocumentDate(request.getDocumentDate());
 
-        // Handle tags update
-        if (request.getTags() != null) {
-            // Clear existing tags
-            existingDocument.clearTags();
-
-            // Add new tags
-            if (!request.getTags().isEmpty()) {
-                Set<Tag> newTags = request.getTags().stream()
-                        .map(tagName -> Tag.builder()
-                                .name(tagName.trim().toLowerCase())
-                                .build())
-                        .collect(Collectors.toSet());
-                existingDocument.setTags(newTags);
-            }
-        }
-
+        // Note: Tags will be handled in the service layer
         return existingDocument;
     }
 
@@ -139,21 +106,6 @@ public class DocumentMapper {
 
         return tags.stream()
                 .map(Tag::getName)
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * Helper method to convert Set<String> to Set<Tag>
-     */
-    private Set<Tag> mapStringsToTags(Set<String> tagNames) {
-        if (tagNames == null || tagNames.isEmpty()) {
-            return null;
-        }
-
-        return tagNames.stream()
-                .map(tagName -> Tag.builder()
-                        .name(tagName.trim().toLowerCase())
-                        .build())
                 .collect(Collectors.toSet());
     }
 }

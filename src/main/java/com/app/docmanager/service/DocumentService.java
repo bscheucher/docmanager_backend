@@ -1,7 +1,10 @@
 package com.app.docmanager.service;
 
+import com.app.docmanager.dto.DocumentDTO;
 import com.app.docmanager.entity.Document;
+import com.app.docmanager.entity.Tag;
 import com.app.docmanager.entity.User;
+import com.app.docmanager.exception.ResourceNotFoundException;
 import com.app.docmanager.repository.DocumentRepository;
 import com.app.docmanager.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +22,7 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
+    private final TagService tagService;
 
     public List<Document> getAllDocuments() {
         return documentRepository.findAll();
@@ -39,24 +44,35 @@ public class DocumentService {
         return documentRepository.findByUserIdAndCategory(userId, category);
     }
 
+    /**
+     * Create a document for a specific user with tag resolution
+     */
     @Transactional
-    public Document createDocument(Document document) {
-        // Validate that the user exists
-        if (document.getUser() == null || document.getUser().getId() == null) {
-            throw new RuntimeException("Document must be associated with a user");
+    public Document createDocument(Document document, Long userId, Set<String> tagNames) {
+        // Fetch and validate the user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        // Set the user on the document
+        document.setUser(user);
+
+        // Handle tags if present
+        if (tagNames != null && !tagNames.isEmpty()) {
+            Set<Tag> managedTags = tagService.createOrGetTags(tagNames);
+            document.setTags(managedTags);
         }
 
-        User user = userRepository.findById(document.getUser().getId())
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + document.getUser().getId()));
-
-        document.setUser(user);
         return documentRepository.save(document);
     }
 
+    /**
+     * Update document with proper tag resolution
+     */
     @Transactional
-    public Document updateDocument(Long id, Document updatedDocument) {
+    public Document updateDocument(Long id, Document updatedDocument, Set<String> tagNames) {
         return documentRepository.findById(id)
                 .map(existingDocument -> {
+                    // Update basic fields
                     existingDocument.setTitle(updatedDocument.getTitle());
                     existingDocument.setCategory(updatedDocument.getCategory());
                     existingDocument.setFilePath(updatedDocument.getFilePath());
@@ -65,22 +81,26 @@ public class DocumentService {
                     existingDocument.setExtractedText(updatedDocument.getExtractedText());
                     existingDocument.setDocumentDate(updatedDocument.getDocumentDate());
 
-                    // Handle user change if provided
-                    if (updatedDocument.getUser() != null && updatedDocument.getUser().getId() != null) {
-                        User newUser = userRepository.findById(updatedDocument.getUser().getId())
-                                .orElseThrow(() -> new RuntimeException("User not found with id: " + updatedDocument.getUser().getId()));
-                        existingDocument.setUser(newUser);
+                    // Handle tags update
+                    if (tagNames != null) {
+                        // Clear existing tags
+                        existingDocument.clearTags();
+
+                        if (!tagNames.isEmpty()) {
+                            Set<Tag> managedTags = tagService.createOrGetTags(tagNames);
+                            existingDocument.setTags(managedTags);
+                        }
                     }
 
                     return documentRepository.save(existingDocument);
                 })
-                .orElseThrow(() -> new RuntimeException("Document not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
     }
 
     @Transactional
     public void deleteDocument(Long id) {
         if (!documentRepository.existsById(id)) {
-            throw new RuntimeException("Document not found with id: " + id);
+            throw new ResourceNotFoundException("Document", "id", id);
         }
         documentRepository.deleteById(id);
     }
@@ -91,8 +111,6 @@ public class DocumentService {
     }
 
     public List<Document> searchDocumentsByTitle(String title) {
-        // This would need a custom query method in the repository
-        // For now, returning all documents (you'd implement actual search logic)
         return documentRepository.findAll().stream()
                 .filter(doc -> doc.getTitle().toLowerCase().contains(title.toLowerCase()))
                 .toList();
