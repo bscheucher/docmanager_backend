@@ -71,15 +71,29 @@ public class DocumentMapper {
             return existingDocument;
         }
 
-        existingDocument.setTitle(request.getTitle());
-        existingDocument.setCategory(request.getCategory());
-        existingDocument.setFilePath(request.getFilePath());
-        existingDocument.setFileType(request.getFileType());
-        existingDocument.setFileSize(request.getFileSize());
-        existingDocument.setExtractedText(request.getExtractedText());
-        existingDocument.setDocumentDate(request.getDocumentDate());
+        // Only update non-null values
+        if (request.getTitle() != null) {
+            existingDocument.setTitle(request.getTitle());
+        }
+        if (request.getCategory() != null) {
+            existingDocument.setCategory(request.getCategory());
+        }
+        if (request.getFilePath() != null) {
+            existingDocument.setFilePath(request.getFilePath());
+        }
+        if (request.getFileType() != null) {
+            existingDocument.setFileType(request.getFileType());
+        }
+        if (request.getFileSize() != null) {
+            existingDocument.setFileSize(request.getFileSize());
+        }
+        if (request.getExtractedText() != null) {
+            existingDocument.setExtractedText(request.getExtractedText());
+        }
+        if (request.getDocumentDate() != null) {
+            existingDocument.setDocumentDate(request.getDocumentDate());
+        }
 
-        // Note: Tags will be handled in the service layer
         return existingDocument;
     }
 

@@ -56,10 +56,19 @@ public class UserMapper {
             return existingUser;
         }
 
-        existingUser.setUsername(request.getUsername());
-        existingUser.setEmail(request.getEmail());
-        existingUser.setFirstName(request.getFirstName());
-        existingUser.setLastName(request.getLastName());
+        // Only update non-null values
+        if (request.getUsername() != null) {
+            existingUser.setUsername(request.getUsername());
+        }
+        if (request.getEmail() != null) {
+            existingUser.setEmail(request.getEmail());
+        }
+        if (request.getFirstName() != null) {
+            existingUser.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            existingUser.setLastName(request.getLastName());
+        }
 
         return existingUser;
     }
