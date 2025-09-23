@@ -6,6 +6,8 @@ import com.app.docmanager.exception.ResourceNotFoundException;
 import com.app.docmanager.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,23 @@ public class TagService {
 
     public List<Tag> searchTags(String query) {
         return tagRepository.findByNameContainingIgnoreCase(query.toLowerCase().trim());
+    }
+
+    // NEW: Paginated methods
+    public Page<Tag> getAllTagsPaginated(Pageable pageable) {
+        return tagRepository.findAll(pageable);
+    }
+
+    public Page<Tag> getTagsByUserIdPaginated(Long userId, Pageable pageable) {
+        return tagRepository.findTagsByUserId(userId, pageable);
+    }
+
+    public Page<Tag> searchTagsPaginated(String query, Pageable pageable) {
+        return tagRepository.findByNameContainingIgnoreCase(query.toLowerCase().trim(), pageable);
+    }
+
+    public Page<Tag> getUnusedTagsPaginated(Pageable pageable) {
+        return tagRepository.findUnusedTags(pageable);
     }
 
     @Transactional

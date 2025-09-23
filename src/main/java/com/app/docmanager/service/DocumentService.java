@@ -8,6 +8,8 @@ import com.app.docmanager.exception.ResourceNotFoundException;
 import com.app.docmanager.repository.DocumentRepository;
 import com.app.docmanager.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -114,5 +116,26 @@ public class DocumentService {
         return documentRepository.findAll().stream()
                 .filter(doc -> doc.getTitle().toLowerCase().contains(title.toLowerCase()))
                 .toList();
+    }
+
+    // NEW: Paginated methods
+    public Page<Document> getAllDocumentsPaginated(Pageable pageable) {
+        return documentRepository.findAll(pageable);
+    }
+
+    public Page<Document> getDocumentsByUserIdPaginated(Long userId, Pageable pageable) {
+        return documentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+    }
+
+    public Page<Document> getDocumentsByUserAndCategoryPaginated(Long userId, String category, Pageable pageable) {
+        return documentRepository.findByUserIdAndCategory(userId, category, pageable);
+    }
+
+    public Page<Document> searchDocumentsByTitlePaginated(String title, Pageable pageable) {
+        return documentRepository.searchByTitle(title, pageable);
+    }
+
+    public Page<Document> searchDocumentsByUserAndTitlePaginated(Long userId, String title, Pageable pageable) {
+        return documentRepository.searchByUserIdAndTitle(userId, title, pageable);
     }
 }
