@@ -8,8 +8,13 @@ import com.app.docmanager.mapper.UserMapper;
 import com.app.docmanager.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +31,18 @@ public class UserController {
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         List<User> users = userService.getAllUsers();
         List<UserDTO> userDTOs = userMapper.toDtoList(users);
+        return ResponseEntity.ok(userDTOs);
+    }
+
+    // NEW: Paginated endpoint
+    @GetMapping("/paginated")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<UserDTO>> getAllUsersPaginated(
+            @PageableDefault(size = 20, sort = "username", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+
+        Page<User> users = userService.getAllUsersPaginated(pageable);
+        Page<UserDTO> userDTOs = users.map(userMapper::toDto);
         return ResponseEntity.ok(userDTOs);
     }
 

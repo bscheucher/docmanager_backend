@@ -9,6 +9,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,6 +35,42 @@ public class TagController {
         List<TagResponse> tagResponses = tags.stream()
                 .map(this::mapToResponse)
                 .toList();
+        return ResponseEntity.ok(tagResponses);
+    }
+
+    // NEW: Paginated endpoints
+    @GetMapping("/paginated")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<Page<TagResponse>> getAllTagsPaginated(
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+
+        Page<Tag> tags = tagService.getAllTagsPaginated(pageable);
+        Page<TagResponse> tagResponses = tags.map(this::mapToResponse);
+        return ResponseEntity.ok(tagResponses);
+    }
+
+    @GetMapping("/my/paginated")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<Page<TagResponse>> getMyTagsPaginated(
+            @CurrentUser CustomUserDetails currentUser,
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+
+        Page<Tag> tags = tagService.getTagsByUserIdPaginated(currentUser.getId(), pageable);
+        Page<TagResponse> tagResponses = tags.map(this::mapToResponse);
+        return ResponseEntity.ok(tagResponses);
+    }
+
+    @GetMapping("/search/paginated")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<Page<TagResponse>> searchTagsPaginated(
+            @RequestParam String query,
+            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+
+        Page<Tag> tags = tagService.searchTagsPaginated(query, pageable);
+        Page<TagResponse> tagResponses = tags.map(this::mapToResponse);
         return ResponseEntity.ok(tagResponses);
     }
 

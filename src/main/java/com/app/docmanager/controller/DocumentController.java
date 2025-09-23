@@ -13,6 +13,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -57,6 +61,51 @@ public class DocumentController {
         List<DocumentDTO> documentDTOs = documentMapper.toDtoList(documents);
         return ResponseEntity.ok(documentDTOs);
     }
+
+    // NEW: Paginated endpoint
+    @GetMapping("/paginated")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<Page<DocumentDTO>> getAllDocumentsPaginated(
+            @CurrentUser CustomUserDetails currentUser,
+            @RequestParam(required = false) String category,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+
+        Page<Document> documents;
+        if (category != null && !category.isEmpty()) {
+            documents = documentService.getDocumentsByUserAndCategoryPaginated(
+                    currentUser.getId(), category, pageable);
+        } else {
+            documents = documentService.getDocumentsByUserIdPaginated(currentUser.getId(), pageable);
+        }
+
+        Page<DocumentDTO> documentDTOs = documents.map(documentMapper::toDto);
+        return ResponseEntity.ok(documentDTOs);
+    }
+
+    // NEW: Paginated search endpoint
+    @GetMapping("/search/paginated")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<Page<DocumentDTO>> searchDocumentsPaginated(
+            @RequestParam String query,
+            @CurrentUser CustomUserDetails currentUser,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+
+        Page<Document> documents;
+
+        // Admin can search all documents, users can only search their own
+        if (currentUser.getRoles().stream().anyMatch(role -> role.name().equals("ROLE_ADMIN"))) {
+            documents = documentService.searchDocumentsByTitlePaginated(query, pageable);
+        } else {
+            documents = documentService.searchDocumentsByUserAndTitlePaginated(
+                    currentUser.getId(), query, pageable);
+        }
+
+        Page<DocumentDTO> documentDTOs = documents.map(documentMapper::toDto);
+        return ResponseEntity.ok(documentDTOs);
+    }
+
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
