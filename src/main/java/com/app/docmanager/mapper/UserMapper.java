@@ -3,13 +3,19 @@ package com.app.docmanager.mapper;
 import com.app.docmanager.dto.UserDTO;
 import com.app.docmanager.dto.DocumentDTO;
 import com.app.docmanager.entity.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor  // Added this for dependency injection
 public class UserMapper {
+
+    // Inject PasswordEncoder
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Convert User entity to UserDTO
@@ -43,6 +49,7 @@ public class UserMapper {
         return User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))  // ✅ ADDED THIS!
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .build();

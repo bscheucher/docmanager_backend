@@ -64,10 +64,8 @@ public class AuthController {
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserDTO> getCurrentUser(@CurrentUser CustomUserDetails currentUser) {
-        User user = authService.getCurrentUser();
-        UserDTO userDTO = userMapper.toDto(user);
-        return ResponseEntity.ok(userDTO);
+    public ResponseEntity<AuthDTO.UserInfo> getCurrentUser() {
+        return ResponseEntity.ok(authService.getCurrentUser());
     }
 
     @GetMapping("/validate")

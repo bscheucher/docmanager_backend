@@ -192,14 +192,23 @@ public class AuthService {
                 .build();
     }
 
-    public User getCurrentUser() {
+    public AuthDTO.UserInfo getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new BadCredentialsException("User not authenticated");
         }
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return userRepository.findById(userDetails.getId())
+        User user = userRepository.findById(userDetails.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        return AuthDTO.UserInfo.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .roles(user.getRoles())  // ✅ Now roles are included
+                .build();
     }
 }

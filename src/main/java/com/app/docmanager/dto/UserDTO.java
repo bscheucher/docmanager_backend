@@ -51,10 +51,14 @@ public class UserDTO {
         @Email(message = "Email should be valid")
         private String email;
 
+        // ADD THIS:
+        @NotBlank(message = "Password cannot be blank")
+        @Size(min = 6, message = "Password must be at least 6 characters")
+        private String password;
+
         private String firstName;
         private String lastName;
     }
-
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
