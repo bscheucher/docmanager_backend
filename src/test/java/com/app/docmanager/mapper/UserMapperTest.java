@@ -19,34 +19,7 @@ class UserMapperTest {
     private UserDTO.CreateUserRequest createRequest;
     private UserDTO.UpdateUserRequest updateRequest;
 
-    @BeforeEach
-    void setUp() {
-        userMapper = new UserMapper();
 
-        testUser = User.builder()
-                .id(1L)
-                .username("testuser")
-                .email("test@example.com")
-                .firstName("Test")
-                .lastName("User")
-                .build();
-        testUser.setCreatedAt(LocalDateTime.now());
-        testUser.setUpdatedAt(LocalDateTime.now());
-
-        createRequest = new UserDTO.CreateUserRequest(
-                "newuser",
-                "new@example.com",
-                "New",
-                "User"
-        );
-
-        updateRequest = new UserDTO.UpdateUserRequest(
-                "updateduser",
-                "updated@example.com",
-                "Updated",
-                "User"
-        );
-    }
 
     @Test
     void toDto_WhenUserProvided_ShouldMapCorrectly() {
