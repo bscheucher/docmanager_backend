@@ -25,7 +25,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -40,6 +39,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final SecurityProperties securityProperties; // ← ADD THIS
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -68,33 +68,44 @@ public class SecurityConfig {
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .authorizeHttpRequests(auth -> {
+                    // Public endpoints
+                    auth.requestMatchers("/api/auth/**").permitAll()
+                            .requestMatchers("/api/public/**").permitAll();
 
-                        // Admin endpoints
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    // Conditionally permit H2 console (only in dev)
+                    if (securityProperties.isH2ConsoleEnabled()) {
+                        auth.requestMatchers("/h2-console/**").permitAll();
+                    }
 
-                        // User management endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/users/check-username/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/users/check-email/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("USER", "ADMIN")
+                    // Conditionally permit Swagger
+                    if (securityProperties.isSwaggerEnabled()) {
+                        auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                    }
 
-                        // Document endpoints
-                        .requestMatchers("/api/documents/**").hasAnyRole("USER", "ADMIN")
+                    // Admin endpoints
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
+                            .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // All other endpoints require authentication
-                        .anyRequest().authenticated())
+                            // User management endpoints
+                            .requestMatchers(HttpMethod.GET, "/api/users/check-username/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/users/check-email/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("USER", "ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("USER", "ADMIN")
+
+                            // Document endpoints
+                            .requestMatchers("/api/documents/**").hasAnyRole("USER", "ADMIN")
+
+                            // All other endpoints require authentication
+                            .anyRequest().authenticated();
+                })
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // Enable H2 console for development
-        http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
+        // Conditionally enable H2 console frame options (only in dev)
+        if (securityProperties.isH2ConsoleEnabled()) {
+            http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
+        }
 
         return http.build();
     }
@@ -102,11 +113,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:4200"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
+
+        // Use SecurityProperties to get CORS settings
+        configuration.setAllowedOrigins(
+                Arrays.asList(securityProperties.getCors().getAllowedOrigins().split(","))
+        );
+        configuration.setAllowedMethods(
+                Arrays.asList(securityProperties.getCors().getAllowedMethods().split(","))
+        );
+        configuration.setAllowedHeaders(
+                Arrays.asList(securityProperties.getCors().getAllowedHeaders().split(","))
+        );
+        configuration.setAllowCredentials(securityProperties.getCors().isAllowCredentials());
+        configuration.setMaxAge(securityProperties.getCors().getMaxAge());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
